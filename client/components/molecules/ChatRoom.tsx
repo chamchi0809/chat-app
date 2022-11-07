@@ -10,6 +10,7 @@ import { SocketClient } from '../../utils/SocketClient';
 import Avatar from '../atoms/Avatar';
 import Auth from '../../utils/Auth';
 import UserDB from '../../utils/UserDB';
+import { getFileInfo } from '../../utils/FileInfo';
 
 const StyledChatRoom = styled.div<{selected:boolean}>`
 
@@ -41,13 +42,12 @@ const StyledChatRoom = styled.div<{selected:boolean}>`
 
   .roomInfo{
     overflow:hidden;
-    margin-left: 10px;
     width:calc(80%);
-    display: flex;
-    flex-direction: column;
     white-space:nowrap;
     text-overflow: ellipsis;
-    display:block;
+    flex-direction: column;
+    margin-left: 10px;
+    display: flex;
     
     margin: 0 5px 0 5px;
     
@@ -83,7 +83,7 @@ const ChatRoom:React.FC<ChatRoomProps> = ({chatRoom, selected, ...rest})=>{
       <Avatar size='sm' imageUrl={chatRoom.type==='group' ? 'http://localhost:5000/images/defaultAvatar.png' : opponent?.profileImage}/>
       <div className='roomInfo'>
         <b>{chatRoom.type === 'group' ? chatRoom.name : opponent?.username}</b><br/>
-        {chatRoom.recentMessage?.message.messageText}
+        {chatRoom.recentMessage?.message.attachmentUrl ? getFileInfo(chatRoom.recentMessage?.message.attachmentUrl).name : chatRoom.recentMessage?.message.messageText}
       </div>
       <AiOutlineClose className='deleteButton' onClick={(e)=>{
         e.stopPropagation();

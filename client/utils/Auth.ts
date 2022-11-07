@@ -25,6 +25,7 @@ export default class Auth{
     if(typeof document !== 'undefined'){
       if(sessionStorage.getItem('jwt')){
         this.token = sessionStorage.getItem('jwt');
+        console.log(this.token);
         this.getUser();
       }
     }

@@ -2,18 +2,23 @@ import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import moment from 'moment';
 import oc from 'open-color';
-import { HTMLAttributes, SetStateAction, Dispatch } from 'react';
 import Auth from '../../utils/Auth';
 import ChatRoomDB from '../../utils/ChatRoomDB';
 import { IChatMessage, IUser } from '../../pages/api/schema';
 import Avatar from '../atoms/Avatar';
 import ChatMessageMenu from '../molecules/ChatMessageMenu';
-import {useState, useEffect}from 'react'
+import {useState, useEffect, useLayoutEffect,DetailedHTMLProps,forwardRef,HTMLAttributes, useRef, MutableRefObject}from 'react'
 import Input from '../atoms/Input';
 import AnchorButton from '../atoms/AnchorButton';
-import { useUserInfoPopUpStore } from '../../zustand/PopUp';
+import { useImagePopUpStore, useUserInfoPopUpStore } from '../../zustand/PopUp';
+import Textarea from '../atoms/Textarea';
+import { useChatMessageStore } from '../../zustand/ChatMessage';
+import { IntersectionPos, useOnScreen } from '../../utils/Hooks';
+import { checkUrlIsImage } from '../../utils/Functions';
+import Image from 'next/image'
+import FileAttachment from '../molecules/FileAttachment';
 
-const StyledChatMessage = styled.div<{isEditting:boolean}>`
+const StyledChatMessage = styled.div<{isEditting:boolean, rows:number}>`
 
   color :${oc.gray[4]};
   border-radius: .25rem;
@@ -21,8 +26,8 @@ const StyledChatMessage = styled.div<{isEditting:boolean}>`
   display: flex;
   flex-wrap: wrap;
   position: relative;
-  align-items: center;
-  align-content: center;
+  align-items: flex-start;
+  align-content: flex-start;
   background-color: ${oc.gray[7]};
   padding-left: 58px;
   &.renderNew{
@@ -30,10 +35,17 @@ const StyledChatMessage = styled.div<{isEditting:boolean}>`
     margin-top: 15px;
   }
 
+  .menu{
+    display: none;
+  }
+
   &:hover{
     background-color: ${oc.gray[8]};
     .menu{
       display: flex;
+    }
+    .fileAttachment{
+      background-color: ${oc.gray[9]};
     }
   }
 
@@ -64,6 +76,7 @@ const StyledChatMessage = styled.div<{isEditting:boolean}>`
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    align-items:flex-start;
     width: calc(100% - 100px);
     &>span{
       margin-bottom: 7px;
@@ -75,35 +88,67 @@ const StyledChatMessage = styled.div<{isEditting:boolean}>`
   }
 
   .messageText{
+    display:inline;
+    white-space:pre-line;
     &>span{
       font-size: .75em;
       color:${oc.gray[6]};
     }
   }
 
-  input{
+  .messageAttachment{
+    img{
+      object-fit:contain;
+      cursor: pointer;
+    }
+  }
+
+  textarea{
     margin: 10px 0;
     width: 100%;
     height: 40px;
+    padding-top: 10px;
+    line-height: 20px;
+    height: ${props=>40+(props.rows-1)*20+2+'px'};
+    min-height: 40px;
+    max-height: 200px;
+    overflow-y: overlay;
+    &::-webkit-scrollbar-track
+    {
+      background-color: rgba(0,0,0,0);
+    }
+
+    &::-webkit-scrollbar
+    {
+      width: 6px;
+      background-color: rgba(0,0,0,0);
+    }
+
+    &::-webkit-scrollbar-thumb
+    {
+      border-radius: 6px;
+      background-color: ${oc.gray[9]};
+    }
   }
 
   
-  .menu{
-    display: none;
-  }
 
 `;
 
-interface ChatMessageProps extends HTMLAttributes<HTMLDivElement>{
+interface ChatMessageProps extends DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>{
   chatMessage:IChatMessage
   prevMessage:IChatMessage
-  setReplyingTo:Dispatch<SetStateAction<IChatMessage>>
+  parentRef:MutableRefObject<HTMLElement>
+  isLast:boolean
 } 
 
-const ChatMessage:React.FC<ChatMessageProps> = ({chatMessage, prevMessage, setReplyingTo,...rest})=>{
+const ChatMessage: React.FC<ChatMessageProps> =({chatMessage, prevMessage, parentRef,isLast,...rest})=>{
 
+  const {messageEditing, setMessageEditing, attachment, replyingTo, messageToSend} = useChatMessageStore();
   const {turnOn:turnUserInfoPopUpOn}=useUserInfoPopUpStore();
+  const {turnOn:turnImagePopUpOn} = useImagePopUpStore();
   const auth = Auth.getAuth();
+  const ref = useRef<HTMLDivElement>(null);
   const chatRoomDB = ChatRoomDB.getChatRoomDB();
   const toMoment = moment(chatMessage.createdAt);
   const toPrevMoment = moment(prevMessage?.createdAt);
@@ -116,12 +161,42 @@ const ChatMessage:React.FC<ChatMessageProps> = ({chatMessage, prevMessage, setRe
   ||chatMessage.replyingTo._id);
 
   const [myId, setMyId] = useState<string>('');
-  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const isEditing = chatMessage._id === messageEditing;
+  const [scrolled, setScrolled] = useState(false);
   const [messageText, setMessageText] = useState<string>(chatMessage.message.messageText);
+  const [rows,setRows] = useState<number>(1);
+  
+  const {isIntersecting:onScreen, intersectionPos} = useOnScreen(ref, parentRef);
+
+  const scrollToThis = (pos:IntersectionPos) =>{
+    if(!onScreen){
+      ref.current.scrollIntoView({
+        behavior: 'auto',
+        block: 'nearest',
+      });
+      setScrolled(true);
+    }
+  }
+
+  useLayoutEffect(()=>{
+    setRows(messageText.split('\n').length);
+  },[messageText])
+
+  useEffect(()=>{
+    if(isEditing && !scrolled) {
+      scrollToThis(intersectionPos);
+    }
+    else {
+      setScrolled(false);
+    };
+  },[messageEditing, onScreen])
 
   const completeEditing = ()=>{
-    setIsEditing(false);
-    chatRoomDB.editMessage(chatMessage._id, messageText);
+    setMessageEditing('');
+    chatRoomDB.editMessage(chatMessage._id, {
+      messageText:messageText,
+      attachmentUrl:chatMessage.message.attachmentUrl,
+    });
   }
 
   useEffect(() => {
@@ -136,6 +211,8 @@ const ChatMessage:React.FC<ChatMessageProps> = ({chatMessage, prevMessage, setRe
 
   return (
     <StyledChatMessage 
+      ref={ref}
+      rows={rows}
       isEditting={isEditing}
       className={renderNew && 'renderNew'}
       {...rest}>
@@ -185,14 +262,16 @@ const ChatMessage:React.FC<ChatMessageProps> = ({chatMessage, prevMessage, setRe
           {
             isEditing?
             <>
-              <Input value={messageText} size={'sm'} color='white' bgcolor={oc.gray[6]} borderColor={oc.gray[6]} enableFocusEffect={false}
-              onChange={(e)=>setMessageText(e.target.value)} 
-              onKeyDown={(e)=>{
-                if(e.key === 'Escape') setIsEditing(false);
-                if(e.key === 'Enter') completeEditing();
-              }}/>
+              <Textarea size='md' color='white' bgcolor={oc.gray[6]} borderColor={oc.gray[6]} enableFocusEffect={false}
+              value={messageText} onChange={e=>setMessageText(e.target.value)} onKeyDown={e=>{
+                  if(!e.shiftKey && e.key==='Enter') e.preventDefault()
+                  if(e.key === 'Escape') setMessageEditing('');
+                  if(e.key === 'Enter' && !e.shiftKey) completeEditing();
+                }
+                
+              }/>
               <span>escape to <AnchorButton 
-              color={oc.blue[5]} onClick={()=>setIsEditing(false)}>cancel</AnchorButton> • enter to <AnchorButton
+              color={oc.blue[5]} onClick={()=>setMessageEditing('')}>cancel</AnchorButton> • enter to <AnchorButton
               color={oc.blue[5]} onClick={completeEditing}>save</AnchorButton></span>
             </>
             :
@@ -200,9 +279,18 @@ const ChatMessage:React.FC<ChatMessageProps> = ({chatMessage, prevMessage, setRe
               {messageText} {isModified ? <span>(edited)</span> : <></>}
             </div>
           }
+          {
+            chatMessage.message.attachmentUrl && <div className="messageAttachment">
+              {
+                checkUrlIsImage(chatMessage.message.attachmentUrl) ? 
+                <img src={chatMessage.message.attachmentUrl} height={300} onClick={()=>turnImagePopUpOn(chatMessage.message.attachmentUrl)}/> :
+                <FileAttachment attachmentUrl={chatMessage.message.attachmentUrl}/>
+              }
+            </div>
+          }
         </>
       </div>
-      <ChatMessageMenu className='menu' isMine={chatMessage.postedBy?._id === myId} chatMessage={chatMessage} editMessage={()=>setIsEditing(true)} replyTo={()=>setReplyingTo(chatMessage)}/>
+      <ChatMessageMenu className='menu' isMine={chatMessage.postedBy?._id === myId} chatMessage={chatMessage}/>
     </StyledChatMessage>
   )
 }

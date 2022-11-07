@@ -1,5 +1,5 @@
 import Auth from './Auth';
-import { chatRoom_type, IChatRoom } from '../pages/api/schema';
+import { chatRoom_type, IChatRoom, IMessage } from '../pages/api/schema';
 
 export default class ChatRoomDB{
 
@@ -20,7 +20,7 @@ export default class ChatRoomDB{
     return ChatRoomDB.instance
   }
 
-  async postMessage(roomId:string, messageText:string, replyingTo:string=''){
+  async postMessage(roomId:string, {messageText, attachmentUrl=''}:IMessage, replyingTo:string=''){
     const auth = Auth.getAuth();
     const token = auth.token;
     
@@ -33,6 +33,7 @@ export default class ChatRoomDB{
       },
       body:JSON.stringify({
         messageText:messageText,
+        attachmentUrl:attachmentUrl,
         replyingTo:replyingTo
       })
     }
@@ -157,7 +158,7 @@ export default class ChatRoomDB{
     }
   }
 
-  async editMessage(messageId:string, messageText:string){
+  async editMessage(messageId:string, {messageText, attachmentUrl=''}:IMessage){
     const auth = Auth.getAuth();
     let token = auth.token;
     
@@ -168,7 +169,10 @@ export default class ChatRoomDB{
         'Content-Type': 'application/json',
         'authorization':`Bearer ${token}`
       },
-      body: `{"messageText":"${messageText}"}`
+      body: JSON.stringify({
+        messageText:messageText,
+        attachmentUrl:attachmentUrl
+      })
     }
     try{
       const res = await fetch(url, options);

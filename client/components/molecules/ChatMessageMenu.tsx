@@ -8,6 +8,7 @@ import {ImReply} from 'react-icons/im';
 import ChatRoomDB from '../../utils/ChatRoomDB';
 import { IChatMessage } from '../../pages/api/schema';
 import ChatMessageMenuButton from '../atoms/ChatMessageMenuButton';
+import { useChatMessageStore } from '../../zustand/ChatMessage';
 
 const StyledChatMessageMenu = styled.div`
   
@@ -21,12 +22,11 @@ const StyledChatMessageMenu = styled.div`
 interface ChatMessageMenuProps extends HTMLAttributes<HTMLDivElement>{
   isMine:boolean
   chatMessage:IChatMessage
-  editMessage:()=>void
-  replyTo:()=>void
 }
 
-const ChatMessageMenu:React.FC<ChatMessageMenuProps> = ({isMine, chatMessage,editMessage, replyTo,...rest})=>{
+const ChatMessageMenu:React.FC<ChatMessageMenuProps> = ({isMine, chatMessage,...rest})=>{
 
+  const {setReplyingTo, setMessageEditing} = useChatMessageStore();
   const chatRoomApi = ChatRoomDB.getChatRoomDB();
 
   return (
@@ -34,14 +34,14 @@ const ChatMessageMenu:React.FC<ChatMessageMenuProps> = ({isMine, chatMessage,edi
       {...rest}>
       <ChatMessageMenuButton
       color={oc.gray[4]}
-      onClick={replyTo}
+      onClick={()=>setReplyingTo(chatMessage)}
       ><ImReply/></ChatMessageMenuButton>
       {
         isMine && 
         <>
           <ChatMessageMenuButton
           color={oc.gray[4]}
-          onClick={editMessage}
+          onClick={()=>setMessageEditing(chatMessage._id)}
           ><AiFillEdit/></ChatMessageMenuButton>
 
           <ChatMessageMenuButton

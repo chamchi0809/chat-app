@@ -1,16 +1,18 @@
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import oc from 'open-color';
-import { HTMLAttributes, UIEvent, UIEventHandler, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { HTMLAttributes, UIEvent, UIEventHandler, useCallback, useEffect, useLayoutEffect, useRef, useState, createRef } from 'react';
 import ChatRoomDB from '../../utils/ChatRoomDB';
 import { IChatMessage, IChatRoom } from '../../pages/api/schema';
-import { lerp } from '../../utils/MathHelper';
 import { SocketClient } from '../../utils/SocketClient';
 import Header from '../atoms/Header';
 import ChatMessage from '../organisms/ChatMessage';
 import ChatMessageSender from '../molecules/ChatMessageSender';
 import ReplyBar from '../molecules/ReplyBar';
 import Auth from '../../utils/Auth';
+import { useChatMessageStore } from '../../zustand/ChatMessage';
+import AttachmentBar from '../molecules/AttachmentBar';
+import { useOnResize } from '../../utils/Hooks';
 
 const StyledChatMessageList = styled.div`
 
@@ -20,7 +22,7 @@ const StyledChatMessageList = styled.div`
   background-color: ${oc.gray[7]};
   display: flex;
   flex-direction: column;
-  
+  overflow-y: hidden;
   flex: 1;
   scroll-behavior: auto;
   padding: 10px;
@@ -68,12 +70,13 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
   const messageContainerRef = useRef<HTMLDivElement>(null)
   const opponent = selectedRoom?.type === 'dm' && selectedRoom?.users?.filter(user=>user._id !== auth.user?._id)[0]
 
+  const {messageToSend, replyingTo, attachment} = useChatMessageStore();
   const [chatMessages, setChatMessages]=useState<IChatMessage[]>([]);
   const [isFetching, setIsFetching] = useState(false);
-  const [hasNext, setHasNext] = useState(true);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [scrollFromBottom, setScrollFromBottom] = useState(0);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [replyingTo, setReplyingTo] = useState<IChatMessage>(null);
+  const [isBottom, setIsBottom] = useState(true);
 
   const listeners = useRef([]);
 
@@ -83,7 +86,7 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
     const chatMessageData = (await chatRoomDB.loadMessages(selectedRoom._id, page, limit)).conversation;
     setIsFetching(false);
     if(chatMessageData?.length === 0) {
-      setHasNext(false)
+      setHasMoreMessages(false)
       return;
     };
 
@@ -145,12 +148,21 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
   }
 
   const handleScroll:UIEventHandler<HTMLDivElement>=(event)=>{
-    const {scrollTop} = messageContainerRef.current;
-
+    const {scrollTop, scrollHeight, clientHeight} = messageContainerRef.current;
+    setIsBottom(Math.abs((scrollHeight - scrollTop) - clientHeight) < 40);
     if(scrollTop<35){
       setIsFetching(true);
     }
   }
+
+  useOnResize(messageContainerRef, (previousHeight)=>{
+    const messageContainer = messageContainerRef.current;
+
+    console.log(messageContainer.clientHeight - previousHeight);
+    messageContainerRef.current.scrollTop += (messageContainer.clientHeight - previousHeight);
+    
+  })
+
 
   useEffect(()=>{
     if(selectedRoom){
@@ -158,7 +170,7 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
       initSocketEvent();
       setIsFetching(true);
       setIsFirstLoad(true);
-      setHasNext(true);
+      setHasMoreMessages(true);
       listenSocketEvent();
     }
     return ()=>{
@@ -166,10 +178,8 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
     }
   },[selectedRoom])
 
-  
-
   useEffect(()=>{
-    if(isFetching && hasNext) loadChatMessages(chatMessages.length, 40);
+    if(isFetching && hasMoreMessages) loadChatMessages(chatMessages.length, 40);
     else if(isFetching) setIsFetching(false);
   },[isFetching])
 
@@ -184,36 +194,38 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
     }
   },[chatMessages])
 
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     const messageContainer = messageContainerRef.current;
-    messageContainer.scrollTop = messageContainer.scrollHeight;
-  },[replyingTo])
+    if(isBottom){
+      messageContainer.scrollTop = messageContainer.scrollHeight;
+      setIsBottom(true);
+    }
+  },[replyingTo, attachment, messageToSend])
 
   return (
     <StyledChatMessageList >
       <Header size='sm' color={oc.gray[2]}>{selectedRoom?.type==='group' ? selectedRoom?.name : opponent?.username}</Header>
       <div className='messages' ref={messageContainerRef} onScroll={handleScroll}>
-        <div css={css`
+        
+        {
+          hasMoreMessages && <div css={css`
           width: 100%;
           height: 50px;
         `}/>
-        {
-          hasNext && <></>
         }
         {
           chatMessages?.map((chatMessage, i, arr)=>{
+
             return(
-              <ChatMessage chatMessage={chatMessage} prevMessage={i === 0 ? null : arr[i-1]} setReplyingTo={setReplyingTo} key={i}/>
+              <ChatMessage parentRef={messageContainerRef} chatMessage={chatMessage} prevMessage={i === 0 ? null : arr[i-1]} isLast={i===arr.length-1} key={i}/>
             )
           })
         }
       </div>
       <div className="bottomSection">
-        {
-          replyingTo &&
-          <ReplyBar replyingTo={replyingTo?.postedBy?.username} cancelReply={()=>setReplyingTo(null)}/>
-        }
-        <ChatMessageSender roomId={selectedRoom?._id} replyingTo={replyingTo?._id}/>
+        <ReplyBar/>
+        <AttachmentBar/>
+        <ChatMessageSender roomId={selectedRoom?._id}/>
       </div>
     </StyledChatMessageList>
   )

@@ -31,7 +31,6 @@ export class SocketClient{
 
   async init() {
     const auth = Auth.getAuth();
-    console.log(await auth.getUser());
     const userId = (await auth.getUser())._id
     if(!this.socket){
       console.log('created new socket');

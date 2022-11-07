@@ -33,9 +33,12 @@ export interface IChatRoom extends ISchema{
 export interface IChatMessage extends ISchema{
   _id?:string,
   chatRoomId:string,
-  message:{
-    messageText:string
-  },
+  message:IMessage
   postedBy?:IUser,
   replyingTo?:IChatMessage
+}
+
+export interface IMessage{
+  messageText:string,
+  attachmentUrl:string
 }

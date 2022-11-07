@@ -1,7 +1,4 @@
 
 import oc from 'open-color';
 
-export type styledColor = Omit<keyof oc, 'black'|'white'>;
-
-
-const co : styledColor = ''
+export type styledColor = Exclude<keyof oc, 'black'|'white'>;

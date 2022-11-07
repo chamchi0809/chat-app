@@ -3,24 +3,27 @@ import { StringDecoder } from 'string_decoder';
 import { v4 as uuidv4 } from "uuid";
 import ChatRoomModel from './chatRoom';
 
+export interface IMessage{
+  messageText:string,
+  attachmentUrl:string
+}
+
 export interface IChatMessage{
   _id?:string,
   chatRoomId:string,
-  message:{
-    messageText:string
-  },
+  message:IMessage
   postedBy:string,
   replyingTo:string
 }
 
 export interface IChatMessageModel extends Model<IChatMessage>{
-  createPostInChatRoom:(chatRoomId:string, message:any, postedBy:string, replyingTo:string)=>Promise<any>
+  createPostInChatRoom:(chatRoomId:string, message:IMessage, postedBy:string, replyingTo:string)=>Promise<any>
   getConversationByRoomId:(chatRoomId:string, options?:IGetConversationOption)=>Promise<any>
   getRecentConversations:(chatRoomIds:string[])=>Promise<any>
   getMessageById:(messageId:string)=>Promise<IChatMessage>
   deleteMessageById:(messageId:string)=>Promise<void>
   deleteMessagesByRoomId:(roomId:string)=>Promise<void>
-  editMessageById:(messageId:string, messageText:string)=>Promise<any>
+  editMessageById:(messageId:string, message:IMessage)=>Promise<any>
 }
 
 export interface IGetConversationOption{
@@ -45,7 +48,7 @@ const chatMessageSchema = new Schema<IChatMessage, IChatMessageModel>(
   }
 );
 
-chatMessageSchema.statics.createPostInChatRoom = async function (chatRoomId:string, message:any, postedBy:string, replyingTo:string) {
+chatMessageSchema.statics.createPostInChatRoom = async function (chatRoomId:string, message:IMessage, postedBy:string, replyingTo:string) {
   try {
     const post = await this.create({
       chatRoomId,
@@ -94,8 +97,6 @@ chatMessageSchema.statics.getConversationByRoomId = async function (chatRoomId:s
     return this.aggregate([
       { $match: { chatRoomId } },
       { $sort: { createdAt: -1 } },
-      // do a join on another table called users, and 
-      // get me a user whose _id = postedBy
       {
         $lookup: {
           from: 'users',
@@ -123,7 +124,6 @@ chatMessageSchema.statics.getConversationByRoomId = async function (chatRoomId:s
         }
       },
       {$unwind:{path:'$replyingTo.postedBy', preserveNullAndEmptyArrays:true}},
-      // apply pagination
       { $skip: options.page },
       { $limit: options.limit },
       { $sort: { createdAt: 1 } },
@@ -147,8 +147,6 @@ chatMessageSchema.statics.getRecentConversations = async function (chatRoomIds:s
         }
       },
       { $sort: { createdAt: -1 } },
-      // do a join on another table called users, and 
-      // get me a user whose _id = postedBy
       {
         $lookup: {
           from: 'users',
@@ -158,8 +156,6 @@ chatMessageSchema.statics.getRecentConversations = async function (chatRoomIds:s
         }
       },
       { $unwind: "$postedBy" },
-      // do a join on another table called chatrooms, and 
-      // get me room details
       {
         $lookup: {
           from: 'chatrooms',
@@ -170,7 +166,6 @@ chatMessageSchema.statics.getRecentConversations = async function (chatRoomIds:s
       },
       { $unwind: "$roomInfo" },
       { $unwind: "$roomInfo.userIds" },
-      // do a join on another table called users 
       {
         $lookup: {
           from: 'users',
@@ -248,9 +243,9 @@ chatMessageSchema.statics.deleteMessagesByRoomId = async function (roomId:string
     throw error;
   }
 }
-chatMessageSchema.statics.editMessageById = async function(messageId:string, messageText:string) {
+chatMessageSchema.statics.editMessageById = async function(messageId:string, message:IMessage) {
   try {
-    await this.updateOne({_id:messageId},{message:{messageText:messageText}});
+    await this.updateOne({_id:messageId},{message:message});
     const aggregate = await this.aggregate([
       { $match: { _id: messageId } },
       {

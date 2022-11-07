@@ -192,9 +192,12 @@ const ProfilePopUp:React.FC<ProfilePopUpProps> = ({idx, user, enabled, ...rest})
               <TabBarItem selected={selectedTab==='User Info'} onClick={()=>{
                 setSelectedTab('User Info')
               }}>User Info</TabBarItem>
-              <TabBarItem selected={selectedTab==='Mutual Friends'} onClick={()=>{
-                setSelectedTab('Mutual Friends')
-              }}>Mutual Friends</TabBarItem>
+              {
+                isMine ||
+                <TabBarItem selected={selectedTab==='Mutual Friends'} onClick={()=>{
+                  setSelectedTab('Mutual Friends')
+                }}>Mutual Friends</TabBarItem>
+              }
             </TabBar>
             <div className="infoScroller">
               {

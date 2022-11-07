@@ -6,11 +6,7 @@ import styled from '@emotion/styled';
 import oc from 'open-color';
 import Button from '../atoms/Button';
 import { AiOutlineClose } from 'react-icons/ai';
-
-interface InputWithLabelProps extends InputProps{
-  replyingTo:string
-  cancelReply:()=>void
-}
+import { useChatMessageStore } from '../../zustand/ChatMessage';
 
 const StyledReplyBar = styled.div`
   background-color: ${oc.gray[8]};
@@ -49,13 +45,17 @@ const StyledReplyBar = styled.div`
 
 
 
-const ReplyBar:React.FC<InputWithLabelProps>=({replyingTo, cancelReply,...rest})=>{
-  return(
-    <StyledReplyBar>
-      <span>Replying to <span id='replyingTo'>@{replyingTo}</span></span>
-      <Button onClick={cancelReply}><AiOutlineClose color='black'/></Button>
-    </StyledReplyBar>
-  )
+const ReplyBar:React.FC=()=>{
+  const {replyingTo, setReplyingTo} = useChatMessageStore();
+  if(replyingTo){
+    console.log(replyingTo)
+    return(
+      <StyledReplyBar>
+        <span>Replying to <span id='replyingTo'>@{replyingTo?.postedBy?.username}</span></span>
+        <Button onClick={()=>setReplyingTo(null)}><AiOutlineClose color='black'/></Button>
+      </StyledReplyBar>
+    )
+  }
 }
 
 export default ReplyBar

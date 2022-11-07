@@ -85,3 +85,17 @@ export const useProfilePopUpStore = create<ProfilePopUpState>()((set)=>({
     return {currentIdx:-1}
   })
 }))
+
+interface ImagePopUpState{
+  enabled:boolean
+  imageUrl:string
+  turnOn:(imageUrl:string)=>void
+  turnOff:()=>void
+}
+
+export const useImagePopUpStore = create <ImagePopUpState>()((set)=>({
+  enabled:false,
+  imageUrl:'',
+  turnOn:(imageUrl)=>set(state=>({imageUrl:imageUrl, enabled:true})),
+  turnOff:()=>set(state=>({enabled:false})),
+}))

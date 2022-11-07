@@ -1,4 +1,4 @@
-import ChatMessageModel, { IGetConversationOption } from '../db/chatMessage';
+import ChatMessageModel, { IGetConversationOption, IMessage } from '../db/chatMessage';
 import ChatRoomModel from '../db/chatRoom';
 import UserModel from '../db/user';
 
@@ -23,11 +23,11 @@ export default {
   postMessage: async (req, res) => {
     try {
       const { roomId } = req.params;
-      if (!req.body.messageText) return res.status(400).json({error:'no message provided'});
       const replyingTo = req.body.replyingTo || '';
   
-      const messagePayload = {
-        messageText: req.body.messageText,
+      const messagePayload:IMessage = {
+        messageText: req.body.messageText || '',
+        attachmentUrl: req.body.attachmentUrl || '',
       };
       const currentLoggedUser = req.userId;
       const post = await ChatMessageModel.createPostInChatRoom(roomId, messagePayload, currentLoggedUser, replyingTo);
@@ -123,7 +123,10 @@ export default {
     try {
       const { messageId } = req.params;
       if (!req.body.messageText) return res.status(400).json({error:'no message provided'});
-      const message = await ChatMessageModel.editMessageById(messageId, req.body.messageText);
+      const message = await ChatMessageModel.editMessageById(messageId, {
+        messageText:req.body.messageText,
+        attachmentUrl:req.body.attachmentUrl||'',
+      });
       global.io.sockets.in(message?.chatRoomId).emit('editMessage', message);
       return res.status(200).json({
         success: true,

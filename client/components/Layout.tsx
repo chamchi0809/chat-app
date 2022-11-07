@@ -11,6 +11,7 @@ import UserMenu from './molecules/UserMenu';
 import UserInfoPopUp from './molecules/UserInfoPopUp';
 import ProfilePopUp from './organisms/ProfilePopUp';
 import { useProfilePopUpStore } from '../zustand/PopUp';
+import ImagePopUp from './molecules/ImagePopUp';
 
 
 
@@ -19,9 +20,6 @@ const Layout:React.FC<any>=({children})=>{
   const router = useRouter();
   const [auth,setAuth]=useState<Auth>(null);
   const {users:profilePopUpUsers, currentIdx:currentProfilePopUpIdx} = useProfilePopUpStore();
-
-
-  console.log(profilePopUpUsers, currentProfilePopUpIdx);
 
   useEffect(()=>{
     setAuth(Auth.getAuth());
@@ -76,6 +74,7 @@ const Layout:React.FC<any>=({children})=>{
       `}>
         <UserInfoPopUp/>
       </div>
+      <ImagePopUp/>
       {
         profilePopUpUsers?.map((user,i)=><ProfilePopUp user={user} idx={i} key={i} enabled={currentProfilePopUpIdx === i}/>)
       }
