@@ -48,7 +48,6 @@ const StyledReplyBar = styled.div`
 const ReplyBar:React.FC=()=>{
   const {replyingTo, setReplyingTo} = useChatMessageStore();
   if(replyingTo){
-    console.log(replyingTo)
     return(
       <StyledReplyBar>
         <span>Replying to <span id='replyingTo'>@{replyingTo?.postedBy?.username}</span></span>

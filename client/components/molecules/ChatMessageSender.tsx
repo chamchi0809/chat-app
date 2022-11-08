@@ -21,7 +21,7 @@ const StyledChatMessageSender = styled.div<{rows:number}>`
   display: flex;
   align-items: flex-start;
   align-content: center;
-  padding: 10px;
+  padding: 10px 0;
   width: 100%;
   bottom: 0;
   box-sizing: border-box;
@@ -81,13 +81,15 @@ const ChatMessageSender:React.FC<ChatMessageSenderProps> = ({roomId, ...rest})=>
   const chatRoomDB = ChatRoomDB.getChatRoomDB();
   const uploader = Uploader.getUploader();
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const {messageToSend, setMessageToSend, attachment, setAttachment,replyingTo} = useChatMessageStore();
+  const {attachment, setAttachment,replyingTo} = useChatMessageStore();
   
   const [rows,setRows] = useState<number>(1);
+  const [messageToSend, setMessageToSend] = useState<string>('');
 
   useLayoutEffect(()=>{
     setRows(messageToSend.split('\n').length);
   },[messageToSend])
+
   const sendMessage = async()=>{
     if(messageToSend || attachment){
       chatRoomDB.postMessage(roomId, {
@@ -114,9 +116,7 @@ const ChatMessageSender:React.FC<ChatMessageSenderProps> = ({roomId, ...rest})=>
       rows={rows}
       onKeyDown={(e)=>{
         if(e.key=='Enter'){
-          if(e.shiftKey){
-            setRows(prev=>prev+1);
-          }else{
+          if(!e.shiftKey){
             sendMessage();
           }
         }

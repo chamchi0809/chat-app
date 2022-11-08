@@ -144,7 +144,7 @@ interface ChatMessageProps extends DetailedHTMLProps<HTMLAttributes<HTMLDivEleme
 
 const ChatMessage: React.FC<ChatMessageProps> =({chatMessage, prevMessage, parentRef,isLast,...rest})=>{
 
-  const {messageEditing, setMessageEditing, attachment, replyingTo, messageToSend} = useChatMessageStore();
+  const {messageEditing, setMessageEditing} = useChatMessageStore();
   const {turnOn:turnUserInfoPopUpOn}=useUserInfoPopUpStore();
   const {turnOn:turnImagePopUpOn} = useImagePopUpStore();
   const auth = Auth.getAuth();
@@ -197,6 +197,11 @@ const ChatMessage: React.FC<ChatMessageProps> =({chatMessage, prevMessage, paren
       messageText:messageText,
       attachmentUrl:chatMessage.message.attachmentUrl,
     });
+  }
+
+  const cancelEditing = ()=>{
+    setMessageEditing('');
+    setMessageText(chatMessage.message.messageText)
   }
 
   useEffect(() => {
@@ -265,13 +270,13 @@ const ChatMessage: React.FC<ChatMessageProps> =({chatMessage, prevMessage, paren
               <Textarea size='md' color='white' bgcolor={oc.gray[6]} borderColor={oc.gray[6]} enableFocusEffect={false}
               value={messageText} onChange={e=>setMessageText(e.target.value)} onKeyDown={e=>{
                   if(!e.shiftKey && e.key==='Enter') e.preventDefault()
-                  if(e.key === 'Escape') setMessageEditing('');
+                  if(e.key === 'Escape') cancelEditing();
                   if(e.key === 'Enter' && !e.shiftKey) completeEditing();
                 }
                 
               }/>
               <span>escape to <AnchorButton 
-              color={oc.blue[5]} onClick={()=>setMessageEditing('')}>cancel</AnchorButton> • enter to <AnchorButton
+              color={oc.blue[5]} onClick={cancelEditing}>cancel</AnchorButton> • enter to <AnchorButton
               color={oc.blue[5]} onClick={completeEditing}>save</AnchorButton></span>
             </>
             :

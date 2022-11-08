@@ -48,7 +48,6 @@ const StyledChatRoom = styled.div<{selected:boolean}>`
     flex-direction: column;
     margin-left: 10px;
     display: flex;
-    
     margin: 0 5px 0 5px;
     
   }
@@ -82,7 +81,7 @@ const ChatRoom:React.FC<ChatRoomProps> = ({chatRoom, selected, ...rest})=>{
       {...rest}>
       <Avatar size='sm' imageUrl={chatRoom.type==='group' ? 'http://localhost:5000/images/defaultAvatar.png' : opponent?.profileImage}/>
       <div className='roomInfo'>
-        <b>{chatRoom.type === 'group' ? chatRoom.name : opponent?.username}</b><br/>
+        <b>{chatRoom.type === 'group' ? chatRoom.name : opponent?.username}</b>
         {chatRoom.recentMessage?.message.attachmentUrl ? getFileInfo(chatRoom.recentMessage?.message.attachmentUrl).name : chatRoom.recentMessage?.message.messageText}
       </div>
       <AiOutlineClose className='deleteButton' onClick={(e)=>{

@@ -10,7 +10,6 @@ import ChatMessage from '../organisms/ChatMessage';
 import ChatMessageSender from '../molecules/ChatMessageSender';
 import ReplyBar from '../molecules/ReplyBar';
 import Auth from '../../utils/Auth';
-import { useChatMessageStore } from '../../zustand/ChatMessage';
 import AttachmentBar from '../molecules/AttachmentBar';
 import { useOnResize } from '../../utils/Hooks';
 
@@ -70,13 +69,11 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
   const messageContainerRef = useRef<HTMLDivElement>(null)
   const opponent = selectedRoom?.type === 'dm' && selectedRoom?.users?.filter(user=>user._id !== auth.user?._id)[0]
 
-  const {messageToSend, replyingTo, attachment} = useChatMessageStore();
   const [chatMessages, setChatMessages]=useState<IChatMessage[]>([]);
   const [isFetching, setIsFetching] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [scrollFromBottom, setScrollFromBottom] = useState(0);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [isBottom, setIsBottom] = useState(true);
 
   const listeners = useRef([]);
 
@@ -149,19 +146,22 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
 
   const handleScroll:UIEventHandler<HTMLDivElement>=(event)=>{
     const {scrollTop, scrollHeight, clientHeight} = messageContainerRef.current;
-    setIsBottom(Math.abs((scrollHeight - scrollTop) - clientHeight) < 40);
     if(scrollTop<35){
       setIsFetching(true);
     }
   }
 
-  useOnResize(messageContainerRef, (previousHeight)=>{
+  useOnResize(messageContainerRef, (currentHeight,previousHeight)=>{
     const messageContainer = messageContainerRef.current;
 
-    console.log(messageContainer.clientHeight - previousHeight);
-    messageContainerRef.current.scrollTop += (messageContainer.clientHeight - previousHeight);
+    if(!isFetching){
+      console.log(currentHeight, previousHeight);
+      if(previousHeight - currentHeight > 0){
+        messageContainer.scrollTop += (previousHeight - currentHeight);
+      }
+    }
     
-  })
+  }, [isFetching])
 
 
   useEffect(()=>{
@@ -193,14 +193,6 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
       messageContainer.scrollTop = messageContainer.scrollHeight - scrollFromBottom;
     }
   },[chatMessages])
-
-  useLayoutEffect(()=>{
-    const messageContainer = messageContainerRef.current;
-    if(isBottom){
-      messageContainer.scrollTop = messageContainer.scrollHeight;
-      setIsBottom(true);
-    }
-  },[replyingTo, attachment, messageToSend])
 
   return (
     <StyledChatMessageList >

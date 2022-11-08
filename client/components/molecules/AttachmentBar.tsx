@@ -67,8 +67,8 @@ const StyledAttachmentBar = styled.div`
 
 
 const AttachmentBar:React.FC=()=>{
+
   const {attachment, setAttachment} = useChatMessageStore();
-  console.log(attachment)
   if(attachment){
     return(
       <StyledAttachmentBar>

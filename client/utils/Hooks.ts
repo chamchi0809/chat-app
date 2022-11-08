@@ -1,4 +1,4 @@
-import {MutableRefObject, useEffect, useState} from 'react';
+import {DependencyList, MutableRefObject, useEffect, useRef, useState} from 'react';
 
 export const useClickOutside = ( ref:MutableRefObject<HTMLElement>, cb)=>{
   useEffect(() => {
@@ -53,18 +53,23 @@ export const useOnScreen=(ref:MutableRefObject<HTMLElement>, parentRef:MutableRe
 }
 
 
-export const useOnResize=(ref:MutableRefObject<HTMLElement>, cb:(previousHeight:number)=>void)=>{
+export const useOnResize=(ref:MutableRefObject<HTMLElement>, cb:(currentHeight:number, previousHeight:number)=>void, deps:DependencyList)=>{
+
+  const previousHeight = useRef<number>(0)
 
   if(typeof document !== 'undefined'){
-    const observer = new ResizeObserver(
-      ([entry]) => {
-        cb(entry.contentRect.height);
-      }
-    )
-  
+    
     useEffect(() => {
+      const observer = new ResizeObserver(
+        ([entry]) => {
+          cb(entry.contentRect.height, previousHeight.current);
+          previousHeight.current = entry.contentRect.height;
+        }
+      )
       observer.observe(ref.current)
+      
+      previousHeight.current = ref.current.clientHeight;
       return () => { observer.disconnect() }
-    }, [])
+    }, deps)
   }
 }
