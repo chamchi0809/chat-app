@@ -9,12 +9,14 @@ interface ServerToClientEvents {
   deleteRoom:(userIds:string[])=>void
   deleteMessage:(message)=>void
   editMessage:(message)=>void
+  getIsTyping:(isTyping:boolean, userId:string)=>void
 }
 
 interface ClientToServerEvents {
   subscribe:(room:string, otherUserId?:string)=>void,
   identity: (userId:string) => void;
   unsubscribe:(room:string)=>void
+  setIsTyping:(room:string, isTyping:boolean)=>void
 }
 
 export class SocketClient{
@@ -78,6 +80,11 @@ export class SocketClient{
     this.socket.on('editMessage', cb)
     return cb;
   }
+  
+  onGetIsTyping(cb:(isTyping:boolean, userId:string)=>void){
+    this.socket.on('getIsTyping', cb);
+    return cb;
+  }
 
   subscribeRoom(room:string, otherUserId:string=''){
     this.socket.emit('subscribe', room, otherUserId);
@@ -86,4 +93,9 @@ export class SocketClient{
   unsubscribeRoom(room:string){
     this.socket.emit('unsubscribe', room);
   }
+
+  setIsTyping(room:string, isTyping:boolean){
+    this.socket?.emit('setIsTyping', room, isTyping);
+  }
+
 }

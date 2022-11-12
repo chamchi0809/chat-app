@@ -12,6 +12,7 @@ import ReplyBar from '../molecules/ReplyBar';
 import Auth from '../../utils/Auth';
 import AttachmentBar from '../molecules/AttachmentBar';
 import { useOnResize } from '../../utils/Hooks';
+import TypingIndicator from '../molecules/TypingIndicator';
 
 const StyledChatMessageList = styled.div`
 
@@ -25,6 +26,7 @@ const StyledChatMessageList = styled.div`
   flex: 1;
   scroll-behavior: auto;
   padding: 10px;
+  padding-bottom: 0;
 
   h1{
     border-bottom: 2px solid ${oc.gray[9]};
@@ -32,6 +34,10 @@ const StyledChatMessageList = styled.div`
   }
 
   .messages{
+    *{
+      max-width: 100%;
+    }
+    max-width: 100%;
     padding-bottom: 10px;
     overflow-y: overlay;
     &::-webkit-scrollbar-track
@@ -155,8 +161,7 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
     const messageContainer = messageContainerRef.current;
 
     if(!isFetching){
-      console.log(currentHeight, previousHeight);
-      if(previousHeight - currentHeight > 0){
+      if(previousHeight - currentHeight > 0 && messageContainer){
         messageContainer.scrollTop += (previousHeight - currentHeight);
       }
     }
@@ -219,6 +224,7 @@ const ChatMessageList:React.FC<ChatMessageListProps> = ({selectedRoom})=>{
         <AttachmentBar/>
         <ChatMessageSender roomId={selectedRoom?._id}/>
       </div>
+      <TypingIndicator chatRoom={selectedRoom}/>
     </StyledChatMessageList>
   )
 }

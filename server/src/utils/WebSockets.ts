@@ -1,21 +1,29 @@
 import { Socket } from 'socket.io';
 import UserModel from '../db/user';
 
-interface UserInfo{
+export interface UserInfo{
   socketId:string,
   userId:string,
 }
 
-interface ServerToClientEvents {
+export interface ServerToClientEvents {
   disconnect:()=>void,
   identity:(userId:string)=>void,
   subscribe:(room:string, otherUserId?:string)=>void,
   unsubscribe:(room:string)=>void
+  setIsTyping:(room:string, isTyping:boolean)=>void
 }
 
-interface ClientToServerEvents {
-  
+export interface ClientToServerEvents {
+  newMessage:(message)=>void
+  newRoom:(userIds:string[])=>void
+  deleteRoom:(userIds:string[])=>void
+  deleteMessage:(message)=>void
+  editMessage:(message)=>void
+  getIsTyping:(isTyping:boolean, userId:string)=>void
 }
+
+export type Client = Socket<ServerToClientEvents, ClientToServerEvents>
 
 
 
@@ -32,7 +40,7 @@ export class WebSockets {
     return WebSockets.instance
   }
 
-  connection(client:Socket<ServerToClientEvents, ClientToServerEvents>) {
+  connection(client:Client) {
     
     client.on("disconnect", () => {
       const user = this.users.find(user=>user.socketId===client.id);
@@ -57,7 +65,13 @@ export class WebSockets {
     client.on("unsubscribe", (room:string) => {
       client.leave(room);
     });
-    
+    client.on('setIsTyping', (room:string, isTyping:boolean)=>{
+      const user = this.users.find(user=>user.socketId===client.id);
+      
+      if(user){
+        (global.io.sockets as Client).in(room).emit('getIsTyping', isTyping, user.userId);
+      }
+    })
   }
 
   subscribeOtherUser(room:string, otherUserId:string) {
@@ -66,9 +80,9 @@ export class WebSockets {
     );
     userSockets.map((userInfo) => {
       
-      const socketConn = global.io.sockets.connected(userInfo.socketId);
+      const socketConn:Socket = global.io.sockets.connected(userInfo.socketId);
       if (socketConn) {
-        (socketConn as Socket).join(room)
+        socketConn.join(room)
       }
     });
   }

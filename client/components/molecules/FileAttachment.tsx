@@ -7,6 +7,8 @@ import { getFileInfo, IFileInfo } from '../../utils/FileInfo';
 import { css } from '@emotion/react';
 
 const StyledFileAttachment = styled.div`
+  
+  max-width: 100%;
   background-color: ${oc.gray[8]};
   display: flex;
   color :${oc.gray[4]};
@@ -17,18 +19,21 @@ const StyledFileAttachment = styled.div`
   p{
     margin: 0;
   }
-  b,p{
+  .fileInfo{
+
     overflow:hidden;
     width:300px;
     white-space:nowrap;
     text-overflow: ellipsis;
   }
   #fileIcon{
+    min-width: 40px;
     width:40px;
     height:40px;
     color: ${oc.gray[3]};
   }
   #downloadButton{
+    min-width: 26px;
     width:26px;
     height:26px;
     color: ${oc.gray[5]};

@@ -11,6 +11,7 @@ import {FaDove, FaPlus} from 'react-icons/fa'
 import Textarea from '../atoms/Textarea';
 import { useChatMessageStore } from '../../zustand/ChatMessage';
 import Uploader from '../../utils/Uploader';
+import { SocketClient } from '../../utils/SocketClient';
 
 const StyledChatMessageSender = styled.div<{rows:number}>`
 
@@ -78,9 +79,11 @@ interface ChatMessageSenderProps extends HTMLAttributes<HTMLDivElement>{
 const ChatMessageSender:React.FC<ChatMessageSenderProps> = ({roomId, ...rest})=>{
 
 
+  const socketClient = SocketClient.getSocketClient();
   const chatRoomDB = ChatRoomDB.getChatRoomDB();
   const uploader = Uploader.getUploader();
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const typingTimeOutRef = useRef(null);
   const {attachment, setAttachment,replyingTo} = useChatMessageStore();
   
   const [rows,setRows] = useState<number>(1);
@@ -88,15 +91,19 @@ const ChatMessageSender:React.FC<ChatMessageSenderProps> = ({roomId, ...rest})=>
 
   useLayoutEffect(()=>{
     setRows(messageToSend.split('\n').length);
+    
+    return(()=>{
+      //socketClient.setIsTyping(roomId, false);
+    })
   },[messageToSend])
 
   const sendMessage = async()=>{
-    if(messageToSend || attachment){
-      chatRoomDB.postMessage(roomId, {
-        messageText: messageToSend.trim(), 
-        attachmentUrl: attachment ? (await uploader.uploadAttachment(attachment, roomId)) : '',
-      }, replyingTo?._id);
-    }
+    const trimmedMessage = messageToSend.trim();
+    if(!trimmedMessage && !attachment) return;
+    chatRoomDB.postMessage(roomId, {
+      messageText: trimmedMessage, 
+      attachmentUrl: attachment ? (await uploader.uploadAttachment(attachment, roomId)) : '',
+    }, replyingTo?._id);
     setMessageToSend('');
     setAttachment(null);
   }
@@ -108,6 +115,12 @@ const ChatMessageSender:React.FC<ChatMessageSenderProps> = ({roomId, ...rest})=>
     }
     fileInputRef.current.files = dataTranster.files;
   }, [attachment])
+
+  useEffect(()=>{
+    return (()=>{
+      socketClient.setIsTyping(roomId, false);
+    })
+  }, [])
   
 
   
@@ -126,7 +139,15 @@ const ChatMessageSender:React.FC<ChatMessageSenderProps> = ({roomId, ...rest})=>
         padding: 0;
       `}><FaPlus/></Button>
       <Textarea size='md' color='white' bgcolor={oc.gray[7]} borderColor={oc.gray[7]} enableFocusEffect={false}
-      value={messageToSend} onChange={e=>setMessageToSend(e.target.value)} onKeyDown={e=>{
+      value={messageToSend} onChange={e=>{
+        setMessageToSend(e.target.value)
+        console.log('s')
+        socketClient.setIsTyping(roomId, true);
+        if(typingTimeOutRef.current) clearTimeout(typingTimeOutRef.current);
+        typingTimeOutRef.current = setTimeout(()=>socketClient.setIsTyping(roomId, false), 2000);
+      }} 
+      onKeyDown={e=>{
+        
         if(!e.shiftKey && e.key==='Enter') e.preventDefault()}
       }/>
       <Button colorScheme='gray' highlightOffset={1} color={oc.gray[2]} onClick={sendMessage}><FaDove/></Button>

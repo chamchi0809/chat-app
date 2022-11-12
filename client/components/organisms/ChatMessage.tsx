@@ -4,19 +4,18 @@ import moment from 'moment';
 import oc from 'open-color';
 import Auth from '../../utils/Auth';
 import ChatRoomDB from '../../utils/ChatRoomDB';
-import { IChatMessage, IUser } from '../../pages/api/schema';
+import { IChatMessage } from '../../pages/api/schema';
 import Avatar from '../atoms/Avatar';
 import ChatMessageMenu from '../molecules/ChatMessageMenu';
 import {useState, useEffect, useLayoutEffect,DetailedHTMLProps,forwardRef,HTMLAttributes, useRef, MutableRefObject}from 'react'
-import Input from '../atoms/Input';
 import AnchorButton from '../atoms/AnchorButton';
 import { useImagePopUpStore, useUserInfoPopUpStore } from '../../zustand/PopUp';
 import Textarea from '../atoms/Textarea';
 import { useChatMessageStore } from '../../zustand/ChatMessage';
 import { IntersectionPos, useOnScreen } from '../../utils/Hooks';
 import { checkUrlIsImage } from '../../utils/Functions';
-import Image from 'next/image'
 import FileAttachment from '../molecules/FileAttachment';
+import Divider from '../atoms/Divider';
 
 const StyledChatMessage = styled.div<{isEditting:boolean, rows:number}>`
 
@@ -87,9 +86,19 @@ const StyledChatMessage = styled.div<{isEditting:boolean, rows:number}>`
     }
   }
 
+  .messageEditor{
+    display:none;
+    &.isEditing{
+      display:block;
+    }
+  }
+
   .messageText{
     display:inline;
     white-space:pre-line;
+    &.isEditing{
+      display:none;
+    }
     &>span{
       font-size: .75em;
       color:${oc.gray[6]};
@@ -131,8 +140,6 @@ const StyledChatMessage = styled.div<{isEditting:boolean, rows:number}>`
     }
   }
 
-  
-
 `;
 
 interface ChatMessageProps extends DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>{
@@ -152,6 +159,7 @@ const ChatMessage: React.FC<ChatMessageProps> =({chatMessage, prevMessage, paren
   const chatRoomDB = ChatRoomDB.getChatRoomDB();
   const toMoment = moment(chatMessage.createdAt);
   const toPrevMoment = moment(prevMessage?.createdAt);
+  const isFirstMessageOfDate = !toMoment.isSame(toPrevMoment, 'day');
   const isToday = toMoment.isSame(new Date(), "day");
   const isYesterday = toMoment.isSame(moment().subtract(1, 'day'),'day');
   const isDiffAuthor = chatMessage.postedBy?._id !== prevMessage?.postedBy?._id;
@@ -160,6 +168,7 @@ const ChatMessage: React.FC<ChatMessageProps> =({chatMessage, prevMessage, paren
   toMoment.diff(toPrevMoment, 'minutes') > 5
   ||chatMessage.replyingTo._id);
 
+  const messageEditorRef = useRef<HTMLTextAreaElement>(null);
   const [myId, setMyId] = useState<string>('');
   const isEditing = chatMessage._id === messageEditing;
   const [scrolled, setScrolled] = useState(false);
@@ -191,6 +200,14 @@ const ChatMessage: React.FC<ChatMessageProps> =({chatMessage, prevMessage, paren
     };
   },[messageEditing, onScreen])
 
+  useEffect(()=>{
+    if(isEditing){
+      const end = messageText.length;
+      messageEditorRef.current?.focus();
+      messageEditorRef.current.setSelectionRange(end,end)
+    }
+  },[messageEditing])
+
   const completeEditing = ()=>{
     setMessageEditing('');
     chatRoomDB.editMessage(chatMessage._id, {
@@ -215,88 +232,89 @@ const ChatMessage: React.FC<ChatMessageProps> =({chatMessage, prevMessage, paren
   },[chatMessage.message.messageText])
 
   return (
-    <StyledChatMessage 
-      ref={ref}
-      rows={rows}
-      isEditting={isEditing}
-      className={renderNew && 'renderNew'}
-      {...rest}>
+    
+    <>
       {
-        chatMessage.replyingTo._id &&
-        <>
-          <div className="replyInfo">
-            ↱ <Avatar className='replyAvatar'
-            size='xs' imageUrl={chatMessage.replyingTo.postedBy.profileImage}/>
-            <AnchorButton className='replyUsername'
-            onClick={(e)=>turnUserInfoPopUpOn([e.clientX, e.clientY], chatMessage.replyingTo?.postedBy)}
-            >{chatMessage.replyingTo.postedBy.username}</AnchorButton>
-            <AnchorButton className='replyMessage' enableUnderline={false} highlightColor={oc.gray[2]} color={oc.gray[5]}>{chatMessage.replyingTo.message.messageText}</AnchorButton>
-          </div>
-          <div css={css`width:100%;`}/>
-        </>
+        isFirstMessageOfDate && <Divider content={toMoment.format('MMMM Do YYYY')}/>
       }
-      {
-        renderNew && 
-        <Avatar
-        size='md' imageUrl={chatMessage.postedBy?.profileImage}
-        onClick={(e)=>turnUserInfoPopUpOn([e.clientX, e.clientY], chatMessage.postedBy)}
-        />
-      }
-      <div className='messageInfo'>
-        <>
-          {
-            renderNew &&
-            <span>
-              <AnchorButton onClick={(e)=>turnUserInfoPopUpOn([e.clientX, e.clientY], chatMessage.postedBy)}><b>{chatMessage.postedBy?.username}</b></AnchorButton>
-              &nbsp;
+      <StyledChatMessage
+        ref={ref}
+        rows={rows}
+        isEditting={isEditing}
+        className={renderNew && 'renderNew'}
+        {...rest}>
+        {
+          chatMessage.replyingTo._id &&
+          <>
+            <div className="replyInfo">
+              ↱ <Avatar className='replyAvatar'
+              size='xs' imageUrl={chatMessage.replyingTo.postedBy.profileImage}/>
+              <AnchorButton className='replyUsername'
+              onClick={(e)=>turnUserInfoPopUpOn([e.clientX, e.clientY], chatMessage.replyingTo?.postedBy)}
+              >{chatMessage.replyingTo.postedBy.username}</AnchorButton>
+              <AnchorButton className='replyMessage' enableUnderline={false} highlightColor={oc.gray[2]} color={oc.gray[5]}>{chatMessage.replyingTo.message.messageText}</AnchorButton>
+            </div>
+            <div css={css`width:100%;`}/>
+          </>
+        }
+        {
+          renderNew &&
+          <Avatar
+          size='md' imageUrl={chatMessage.postedBy?.profileImage}
+          onClick={(e)=>turnUserInfoPopUpOn([e.clientX, e.clientY], chatMessage.postedBy)}
+          />
+        }
+        <div className='messageInfo'>
+          <>
+            {
+              renderNew &&
               <span>
-                {
-                isYesterday ? 
-                'Yesterday at '+toMoment.format('HH:mm')
-                :
-                isToday ?  
-                'Today at '+toMoment.format('HH:mm')
-                :
-                toMoment.format('YYYY.MM.DD')
-                }
+                <AnchorButton onClick={(e)=>turnUserInfoPopUpOn([e.clientX, e.clientY], chatMessage.postedBy)}><b>{chatMessage.postedBy?.username}</b></AnchorButton>
+                &nbsp;
+                <span>
+                  {
+                  isYesterday ?
+                  'Yesterday at '+toMoment.format('HH:mm')
+                  :
+                  isToday ?
+                  'Today at '+toMoment.format('HH:mm')
+                  :
+                  toMoment.format('YYYY.MM.DD')
+                  }
+                </span>
               </span>
-            </span>
-          }
-        </>
-        <>
-          {
-            isEditing?
-            <>
-              <Textarea size='md' color='white' bgcolor={oc.gray[6]} borderColor={oc.gray[6]} enableFocusEffect={false}
+            }
+          </>
+          <>
+            <div className={`messageEditor ${isEditing && 'isEditing'}`}>
+              <Textarea ref={messageEditorRef} size='md' color='white' bgcolor={oc.gray[6]} borderColor={oc.gray[6]} enableFocusEffect={false}
               value={messageText} onChange={e=>setMessageText(e.target.value)} onKeyDown={e=>{
                   if(!e.shiftKey && e.key==='Enter') e.preventDefault()
                   if(e.key === 'Escape') cancelEditing();
                   if(e.key === 'Enter' && !e.shiftKey) completeEditing();
                 }
-                
               }/>
-              <span>escape to <AnchorButton 
+              <span>escape to <AnchorButton
               color={oc.blue[5]} onClick={cancelEditing}>cancel</AnchorButton> • enter to <AnchorButton
               color={oc.blue[5]} onClick={completeEditing}>save</AnchorButton></span>
-            </>
-            :
-            <div className='messageText'>
+            </div>
+            <div className={`messageText ${isEditing && 'isEditing'}`}>
               {messageText} {isModified ? <span>(edited)</span> : <></>}
             </div>
-          }
-          {
-            chatMessage.message.attachmentUrl && <div className="messageAttachment">
-              {
-                checkUrlIsImage(chatMessage.message.attachmentUrl) ? 
-                <img src={chatMessage.message.attachmentUrl} height={300} onClick={()=>turnImagePopUpOn(chatMessage.message.attachmentUrl)}/> :
-                <FileAttachment attachmentUrl={chatMessage.message.attachmentUrl}/>
-              }
-            </div>
-          }
-        </>
-      </div>
-      <ChatMessageMenu className='menu' isMine={chatMessage.postedBy?._id === myId} chatMessage={chatMessage}/>
-    </StyledChatMessage>
+            {
+              chatMessage.message.attachmentUrl && <div className="messageAttachment">
+                {
+                  checkUrlIsImage(chatMessage.message.attachmentUrl) ?
+                  <img src={chatMessage.message.attachmentUrl} height={300} onClick={()=>turnImagePopUpOn(chatMessage.message.attachmentUrl)}/> :
+                  <FileAttachment attachmentUrl={chatMessage.message.attachmentUrl}/>
+                }
+              </div>
+            }
+          </>
+        </div>
+        <ChatMessageMenu className='menu' isMine={chatMessage.postedBy?._id === myId} chatMessage={chatMessage}/>
+      </StyledChatMessage>
+    </>
   )
 }
 

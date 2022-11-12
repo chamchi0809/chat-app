@@ -1,4 +1,4 @@
-import React, { TextareaHTMLAttributes } from 'react'
+import React, { TextareaHTMLAttributes, forwardRef } from 'react'
 import oc from 'open-color'
 import { styledSize } from '../../styles/SizeStyles'
 import styled from '@emotion/styled'
@@ -33,10 +33,11 @@ export interface TextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaE
   enableFocusEffect?:boolean
 }
 
-const Textarea:React.FC<TextareaProps&React.ClassAttributes<HTMLTextAreaElement>> = ({color='black', bgcolor='white', size='md', borderColor=oc.gray[3], enableFocusEffect=true, ...rest})=>{
+const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({color='black', bgcolor='white', size='md', borderColor=oc.gray[3], enableFocusEffect=true, ...rest}, ref)=>{
   
   return (
     <textarea
+      ref={ref}
       css={css`
         font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
         resize: none;
@@ -54,6 +55,6 @@ const Textarea:React.FC<TextareaProps&React.ClassAttributes<HTMLTextAreaElement>
       {...rest}
     />
   )
-}
+})
 
 export default Textarea
