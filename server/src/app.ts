@@ -1,5 +1,6 @@
 //configure .env file
 import * as dotenv from 'dotenv'
+
 dotenv.config();
 
 import http from 'http';
@@ -17,8 +18,7 @@ import uploadRouter from './routers/upload';
 //middlewares
 import {decode} from './middlewares/jwt';
 //utils
-import { WebSockets } from './utils/WebSockets';
-
+import {WebSockets} from './utils/WebSockets';
 
 
 const app = express();
@@ -29,26 +29,26 @@ app.set('port', port);
 app.use(cors());
 app.use(logger('dev'));
 app.use(express.json());
-app.use(express.urlencoded({extended:false}));
+app.use(express.urlencoded({extended: false}));
 
-app.use('/',indexRouter);
-app.use('/users',decode,userRouter);
+app.use('/', indexRouter);
+app.use('/users', decode, userRouter);
 app.use('/rooms', decode, chatRoomRouter);
-app.use('/upload',decode, uploadRouter);
-app.use('/attachments',express.static('attachments'))
+app.use('/upload', decode, uploadRouter);
+app.use('/attachments', express.static('attachments'))
 app.use('/images', express.static('images'))
 
-app.use('*', (req, res)=>{
-  return res.status(404).json({
-    success:false,
-    message:'route doesnt exist'
-  })
+app.use('*', (req, res) => {
+    return res.status(404).json({
+        success: false,
+        message: 'route doesnt exist'
+    })
 })
 
 const server = http.createServer(app);
 server.listen(port);
-server.on('listening',()=>{
-  console.log(`listening on localhost:${port}`);
+server.on('listening', () => {
+    console.log(`listening on localhost:${port}`);
 })
 
 const webSockets = WebSockets.getWebSockets();

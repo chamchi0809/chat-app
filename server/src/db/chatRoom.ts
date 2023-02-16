@@ -1,129 +1,144 @@
-import mongoose, { model, Model, Schema } from "mongoose";
-import { v4 as uuidv4 } from "uuid";
-import UserModel, { IUser } from './user';
+import mongoose, {model, Model, Schema} from "mongoose";
+import {v4 as uuidv4} from "uuid";
+import UserModel, {IUser} from './user';
 
-export type chatRoom_type='group'|'dm'
+export type chatRoom_type = 'group' | 'dm'
 
-export interface IChatRoom{
-  _id?:string,
-  name:string,
-  userIds:string[],
-  chatInitiator:string
-  type:chatRoom_type
+export interface IChatRoom {
+    _id?: string,
+    name: string,
+    userIds: string[],
+    chatInitiator: string
+    type: chatRoom_type
 }
 
-export interface IChatRoomModel extends Model<IChatRoom>{
-  initiateChat:(userIds:string[], chatInitiator:string, type:chatRoom_type)=>Promise<{isNew:boolean, id:string, opponent:IUser}>
-  getChatRoomById:(roomId:string)=>Promise<IChatRoom>
-  getChatRoomsByUserId:(userId:string)=>Promise<IChatRoom[]>
-  deleteChatRoomById:(roomId:string)=>Promise<void>
+export interface IChatRoomModel extends Model<IChatRoom> {
+    initiateChat: (userIds: string[], chatInitiator: string, type: chatRoom_type) => Promise<{ isNew: boolean, id: string, opponent: IUser }>
+    getChatRoomById: (roomId: string) => Promise<IChatRoom>
+    exitChatRoomById: (roomId: string, userId:string) => Promise<void>
+    getChatRoomsByUserId: (userId: string) => Promise<IChatRoom[]>
+    deleteChatRoomById: (roomId: string) => Promise<void>
 }
 
 const chatRoomSchema = new Schema<IChatRoom, IChatRoomModel>(
-  {
-    _id: {
-      type: String,
-      default: () => uuidv4().replace(/\-/g, ""),
+    {
+        _id: {
+            type: String,
+            default: () => uuidv4().replace(/\-/g, ""),
+        },
+        name: {
+            type: String,
+            default: 'Untitled'
+        },
+        userIds: [String],
+        chatInitiator: String,
+        type: String,
     },
-    name:{
-      type:String,
-      default:'Untitled'
-    },
-    userIds: Array,
-    chatInitiator: String,
-    type:String
-  },
-  {
-    timestamps: true,
-    collection: "chatrooms",
-  }
+    {
+        timestamps: true,
+        collection: "chatrooms",
+    }
 );
 
 chatRoomSchema.statics.initiateChat = async function (
-	userIds:string, chatInitiator:string, type:chatRoom_type
+    userIds: string, chatInitiator: string, type: chatRoom_type
 ) {
-  try {
-    let isNew = true;
-    if(type==='dm'){
-      const room = await this.findOne({userIds:userIds, chatInitiator:chatInitiator})
-      if(room) return {
-        isNew:false,
-        id:room._id,
-        opponent:UserModel.getUserById(room.userIds[0])
-      }
-    }
-    const newRoom = await this.create({ userIds,chatInitiator,type });
-    return {isNew:true, id:newRoom._id, opponent:null};
-  } catch (error) {
-    console.log('error on start chat method', error);
-    throw error;
-  }
-};
-
-chatRoomSchema.statics.getChatRoomById = async function (roomId:string) {
-  try {
-    const aggregate = await this.aggregate([
-      {$match:{ _id:roomId } },
-      {$lookup:{from:'users', localField:'userIds', foreignField:'_id', as:'users'}},
-      {$lookup: {from: "chatmessages", localField: "_id", foreignField: "chatRoomId", as: "chatmessages"}},
-      {$unwind: { path: "$chatmessages", preserveNullAndEmptyArrays: true }},
-      {$sort: {"chatmessages.createdAt": -1}},
-      {$group:
-        { 
-          _id:"$_id",
-          name:{$last:'$name'},
-          userIds:{$last:'$userIds'},
-          chatInitiator:{$last:'$chatInitiator'},
-          type:{$last:'$type'},
-          createdAt:{$last:'$createdAt'},
-          updatedAt:{$last:'$updatedAt'},
-          recentMessage:{$first:'$chatmessages'},
-          users:{$first:'$users'}
+    try {
+        if (type === 'dm') {
+            console.log(userIds);
+            const room = await this.findOne({
+                userIds: {$all: [userIds[0], userIds[1]]},
+                type: 'dm'
+            })
+            if (room) return {
+                isNew: false,
+                id: room._id,
+                opponent: UserModel.getUserById(room.userIds[0])
+            }
         }
-      }
-    ]);
-    return aggregate[0]
-  } catch (error) {
-    throw error;
-  }
+        const newRoom = await this.create({userIds, chatInitiator, type});
+        return {isNew: true, id: newRoom._id, opponent: null};
+    } catch (error) {
+        console.log('error on start chat method', error);
+        throw error;
+    }
 };
 
-chatRoomSchema.statics.deleteChatRoomById = async function (roomId:string) {
-  try {
-    await this.deleteOne({_id:roomId});
-  } catch (error) {
-    console.log(error);
-    throw error;
-  }
+chatRoomSchema.statics.getChatRoomById = async function (roomId: string) {
+    try {
+        const aggregate = await this.aggregate([
+            {$match: {_id: roomId}},
+            {$lookup: {from: 'users', localField: 'userIds', foreignField: '_id', as: 'users'}},
+            {$lookup: {from: "chatmessages", localField: "_id", foreignField: "chatRoomId", as: "chatmessages"}},
+            {$unwind: {path: "$chatmessages", preserveNullAndEmptyArrays: true}},
+            {$sort: {"chatmessages.createdAt": -1}},
+            {
+                $group:
+                    {
+                        _id: "$_id",
+                        name: {$last: '$name'},
+                        userIds: {$last: '$userIds'},
+                        chatInitiator: {$last: '$chatInitiator'},
+                        type: {$last: '$type'},
+                        createdAt: {$last: '$createdAt'},
+                        updatedAt: {$last: '$updatedAt'},
+                        recentMessage: {$first: '$chatmessages'},
+                        users: {$first: '$users'}
+                    }
+            }
+        ]);
+        return aggregate[0]
+    } catch (error) {
+        throw error;
+    }
+};
+
+chatRoomSchema.statics.deleteChatRoomById = async function (roomId: string) {
+    try {
+        await this.deleteOne({_id: roomId});
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
 }
 
-chatRoomSchema.statics.getChatRoomsByUserId = async function (userId:string) {
-  try {
-    return await this.aggregate([
-      {$match:{ userIds: { $all: [userId] } }},
-      {$lookup:{from:'users', localField:'userIds', foreignField:'_id', as:'users'}},
-      {$lookup: {from: "chatmessages", localField: "_id", foreignField: "chatRoomId", as: "chatmessages"}},
-      {$unwind: { path: "$chatmessages", preserveNullAndEmptyArrays: true }},
-      {$sort: {"chatmessages.createdAt": -1}},
-      {$group:
-        { 
-          _id:'$_id',
-          name:{$last:'$name'},
-          userIds:{$last:'$userIds'},
-          chatInitiator:{$last:'$chatInitiator'},
-          type:{$last:'$type'},
-          createdAt:{$last:'$createdAt'},
-          updatedAt:{$last:'$updatedAt'},
-          recentMessage:{$first:'$chatmessages'},
-          users:{$first:'$users'}
-        }
-      },
-      {$sort:{'updatedAt':-1}}
-    ])
-  } catch (error) {
-    console.log(error)
-    throw error;
-  }
+chatRoomSchema.statics.exitChatRoomById = async function (roomId: string, userId: string) {
+    try {
+        await this.updateOne({_id: roomId}, {$pull: {userIds: userId}});
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+chatRoomSchema.statics.getChatRoomsByUserId = async function (userId: string) {
+    try {
+        return await this.aggregate([
+            {$match: {userIds: {$all: [userId]}}},
+            {$lookup: {from: 'users', localField: 'userIds', foreignField: '_id', as: 'users'}},
+            {$lookup: {from: "chatmessages", localField: "_id", foreignField: "chatRoomId", as: "chatmessages"}},
+            {$unwind: {path: "$chatmessages", preserveNullAndEmptyArrays: true}},
+            {$sort: {"chatmessages.createdAt": -1}},
+            {
+                $group:
+                    {
+                        _id: '$_id',
+                        name: {$last: '$name'},
+                        userIds: {$last: '$userIds'},
+                        chatInitiator: {$last: '$chatInitiator'},
+                        type: {$last: '$type'},
+                        createdAt: {$last: '$createdAt'},
+                        updatedAt: {$last: '$updatedAt'},
+                        recentMessage: {$first: '$chatmessages'},
+                        users: {$first: '$users'}
+                    }
+            },
+            {$sort: {'updatedAt': -1}}
+        ])
+    } catch (error) {
+        console.log(error)
+        throw error;
+    }
 }
 
 
@@ -133,6 +148,6 @@ const ChatRoomModel = model<IChatRoom, IChatRoomModel>('ChatRoom', chatRoomSchem
 
 export default ChatRoomModel
 
-export function validateChatRoom(chatRoom:IChatRoom) : chatRoom is IChatRoom{
-  return ('userIds' in chatRoom && 'chatInitiator' in chatRoom)
+export function validateChatRoom(chatRoom: IChatRoom): chatRoom is IChatRoom {
+    return ('userIds' in chatRoom && 'chatInitiator' in chatRoom)
 }

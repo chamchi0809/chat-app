@@ -6,6 +6,7 @@ const chatRoomRouter = express.Router();
 chatRoomRouter.get('/', chatRoomController.getRecentConversation);
 chatRoomRouter.get('/:roomId', chatRoomController.getChatRoomById);
 chatRoomRouter.delete('/:roomId', chatRoomController.deleteChatRoomById);
+chatRoomRouter.post('/:roomId/exit', chatRoomController.exitChatRoomById);
 chatRoomRouter.get('/:roomId/message', chatRoomController.getConversationByRoomId);
 chatRoomRouter.delete('/message/:messageId', chatRoomController.deleteMessageById);
 chatRoomRouter.patch('/message/:messageId', chatRoomController.editMessageById)

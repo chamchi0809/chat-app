@@ -9,6 +9,7 @@ userRouter.delete('/friend/:id', userController.deleteFriendById)
 userRouter.get('/myInfo', userController.getUserByToken);
 userRouter.get('/:id', userController.getUserById);
 userRouter.get('/:id/mutualFriends', userController.getMutualFriends);
+userRouter.get('/drafts/:roomId', userController.getDraftByRoomId);
 userRouter.delete('/:id', userController.deleteUserById);
 
 export default userRouter;
